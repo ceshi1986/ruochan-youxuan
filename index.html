@@ -37,7 +37,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
 .product-grid{max-width:1200px;margin:0 auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
 .product-card{background:var(--card-bg);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);transition:transform 0.3s,box-shadow 0.3s}
 .product-card:hover{transform:translateY(-4px);box-shadow:0 8px 30px rgba(0,0,0,0.12)}
-.product-img{width:100%;aspect-ratio:1;object-fit:cover;background:#f0f0f0}
+/* Image Gallery */
+.img-gallery{position:relative;width:100%;aspect-ratio:1;overflow:hidden;background:#f0f0f0}
+.img-gallery img{width:100%;height:100%;object-fit:cover;transition:opacity 0.3s}
+.img-gallery .img-nav{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:2}
+.img-gallery .img-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.5);border:none;cursor:pointer;padding:0;transition:background 0.3s}
+.img-gallery .img-dot.active{background:#fff}
+.img-gallery .img-arrows{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;padding:0 4px;opacity:0;transition:opacity 0.3s;pointer-events:none}
+.product-card:hover .img-arrows{opacity:1}
+.img-gallery .img-arrow{width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,0.4);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;pointer-events:auto;transition:background 0.2s}
+.img-gallery .img-arrow:hover{background:rgba(0,0,0,0.7)}
 .product-info{padding:16px}
 .product-name{font-size:17px;font-weight:600;margin-bottom:8px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .product-desc{font-size:13px;color:var(--text-light);margin-bottom:12px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:60px}
@@ -178,9 +187,12 @@ function renderProducts() {
     return;
   }
 
-  grid.innerHTML = filtered.map(({p, allIdx}) => `
+  grid.innerHTML = filtered.map(({p, allIdx}) => {
+    const images = getImages(p);
+    const gallery = buildGallery(allIdx, images);
+    return `
     <div class="product-card">
-      <img class="product-img" src="${p.image || ''}" alt="${esc(p.name)}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%23f0f0f0%22 width=%22200%22 height=%22200%22/><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2240%22>📦</text></svg>'">
+      ${gallery}
       <div class="product-info">
         <div class="product-name">${esc(p.name)}</div>
         <div class="product-desc">${esc(p.description || '')}</div>
@@ -198,7 +210,40 @@ function renderProducts() {
         <button class="want-btn" data-idx="${allIdx}" onclick="showContactByIndex(this.dataset.idx)">🛒 我想要</button>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
+}
+
+function getImages(p) {
+  if (p.images && p.images.length > 0) return p.images;
+  if (p.image) return [p.image];
+  return [];
+}
+
+function buildGallery(gid, images) {
+  const ph = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%23f0f0f0%22 width=%22200%22 height=%22200%22/><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2240%22>📦</text></svg>';
+  if (images.length === 0) return `<div class="img-gallery"><img src="${ph}" alt=""></div>`;
+  const imgs = images.map((s,i) => `<img src="${s}" alt="" style="display:${i===0?'block':'none'}">`).join('');
+  const arrows = images.length > 1 ? `<div class="img-arrows"><button class="img-arrow" onclick="gNav(${gid},-1)">‹</button><button class="img-arrow" onclick="gNav(${gid},1)">›</button></div>` : '';
+  const dots = images.length > 1 ? '<div class="img-nav">' + images.map((_,i) => `<button class="img-dot${i===0?' active':''}" onclick="gGo(${gid},${i})"></button>`).join('') + '</div>' : '';
+  return `<div class="img-gallery" data-g="${gid}" data-n="${images.length}" data-c="0">${imgs}${arrows}${dots}</div>`;
+}
+
+function gGo(gid, idx) {
+  const g = document.querySelector(`.img-gallery[data-g="${gid}"]`);
+  if (!g) return;
+  const n = parseInt(g.dataset.n), c = parseInt(g.dataset.current);
+  const t = ((idx % n) + n) % n;
+  if (t === c) return;
+  g.querySelectorAll('img').forEach((im,i) => im.style.display = i===t?'block':'none');
+  g.querySelectorAll('.img-dot').forEach((d,i) => d.classList.toggle('active', i===t));
+  g.dataset.current = t;
+}
+
+function gNav(gid, dir) {
+  const g = document.querySelector(`.img-gallery[data-g="${gid}"]`);
+  if (!g) return;
+  gGo(gid, parseInt(g.dataset.current) + dir);
 }
 
 function showContact(contact) {
