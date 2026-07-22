@@ -40,6 +40,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 .token-setup input{width:100%;padding:10px 14px;border:1.5px solid #ffe082;border-radius:8px;font-size:14px;outline:none;margin-bottom:10px}
 .token-setup button{padding:8px 20px;border:none;border-radius:8px;background:#f57f17;color:#fff;font-size:13px;cursor:pointer}
 
+/* AI Key Setup */
+.ai-setup{background:#e8f0fe;border:1px solid #90b4f8;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:none}
+.ai-setup h3{font-size:14px;margin-bottom:6px;color:#1a73e8}
+.ai-setup p{font-size:12px;color:#666;margin-bottom:10px;line-height:1.5}
+.ai-setup .ai-row{display:flex;gap:8px}
+.ai-setup input{flex:1;padding:8px 12px;border:1.5px solid #90b4f8;border-radius:8px;font-size:13px;outline:none}
+.ai-setup button{padding:8px 16px;border:none;border-radius:8px;background:#1a73e8;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap}
+.ai-toggle{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.ai-toggle label{font-size:12px;color:#666}
+.ai-toggle select{padding:4px 8px;border:1px solid #90b4f8;border-radius:6px;font-size:12px;outline:none}
+
+/* Multi Image Upload */
+.multi-img-area{border:2px dashed var(--border);border-radius:10px;padding:12px;min-height:80px;transition:border-color 0.3s}
+.multi-img-area:hover{border-color:var(--primary)}
+.multi-img-area .img-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.multi-img-area .img-thumb{position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid #eee}
+.multi-img-area .img-thumb img{width:100%;height:100%;object-fit:cover}
+.multi-img-area .img-thumb .remove-img{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.6);color:#fff;border:none;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.multi-img-area .add-img-btn{display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;border:2px dashed var(--border);border-radius:8px;cursor:pointer;color:var(--text-light);font-size:24px;transition:border-color 0.3s}
+.multi-img-area .add-img-btn:hover{border-color:var(--primary);color:var(--primary)}
+
+/* AI Generate Button */
+.ai-gen-row{display:flex;gap:8px;margin-top:6px}
+.ai-gen-btn{padding:6px 14px;border:1.5px solid #1a73e8;border-radius:8px;background:#fff;color:#1a73e8;font-size:12px;cursor:pointer;transition:all 0.3s;white-space:nowrap}
+.ai-gen-btn:hover{background:#1a73e8;color:#fff}
+.ai-gen-btn:disabled{opacity:0.5;cursor:not-allowed}
+.ai-gen-status{font-size:12px;color:#1a73e8;line-height:32px}
+
 /* Product List */
 .product-list{display:flex;flex-direction:column;gap:12px}
 .product-item{background:var(--card);border-radius:12px;padding:16px;display:flex;gap:16px;align-items:center;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
@@ -116,6 +144,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
     <h1>若禅<span>优选</span> · 管理</h1>
     <div class="actions">
       <button onclick="showPreview()">👁 预览</button>
+      <button onclick="toggleAiSetup()">🤖 AI设置</button>
       <button class="primary" onclick="openAddModal()">+ 添加商品</button>
       <button onclick="doLogout()">退出</button>
     </div>
@@ -133,6 +162,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
       <button onclick="saveToken()">保存 Token</button>
     </div>
 
+    <div class="ai-setup" id="aiSetup">
+      <h3>🤖 AI 生成配置</h3>
+      <p>使用阿里云通义千问 (Qwen-VL) 模型自动生成商品描述。需要 DashScope API Key。<br>
+      获取方式：访问 <a href="https://dashscope.console.aliyun.com/apiKey" target="_blank" style="color:#1a73e8">DashScope 控制台</a> 创建 API Key</p>
+      <div class="ai-row">
+        <input type="password" id="aiApiKey" placeholder="sk-xxxxxxxxxxxxxxxx">
+        <button onclick="saveAiKey()">保存</button>
+      </div>
+      <div class="ai-toggle" style="margin-top:10px">
+        <label>模型选择</label>
+        <select id="aiModel">
+          <option value="qwen-vl-max">qwen-vl-max（推荐，支持图片理解）</option>
+          <option value="qwen-vl-plus">qwen-vl-plus（较快）</option>
+          <option value="qwen-turbo">qwen-turbo（纯文本，不分析图片）</option>
+        </select>
+      </div>
+    </div>
+
     <div class="product-list" id="productList">
       <div class="empty"><div class="icon">📦</div><p>暂无商品，点击右上角添加</p></div>
     </div>
@@ -148,15 +195,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
     <label>商品名称 *</label>
     <input type="text" id="editName" placeholder="输入商品名称">
 
-    <label>商品图片</label>
-    <div class="img-upload" id="imgUpload" onclick="document.getElementById('imgInput').click()">
-      <div class="placeholder" id="imgPlaceholder">📷 点击上传图片</div>
-      <img id="imgPreview" style="display:none">
-      <input type="file" id="imgInput" accept="image/*" onchange="handleImage(this)">
+    <label>商品图片（可上传多张）</label>
+    <div class="multi-img-area">
+      <div class="img-list" id="imgList"></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label class="add-img-btn" for="imgInput">+</label>
+        <input type="file" id="imgInput" accept="image/*" multiple onchange="handleImages(this)" style="display:none">
+        <span style="font-size:12px;color:var(--text-light)">支持多张图片，单张不超过2MB</span>
+      </div>
     </div>
 
     <label>商品介绍</label>
-    <textarea id="editDesc" placeholder="输入商品介绍，或使用下方AI生成"></textarea>
+    <div class="ai-gen-row">
+      <textarea id="editDesc" placeholder="输入商品介绍，或点击AI生成" style="flex:1;min-height:80px"></textarea>
+    </div>
+    <div class="ai-gen-row">
+      <button class="ai-gen-btn" id="aiGenBtn" onclick="aiGenerateDesc()">🤖 AI 根据图片生成描述</button>
+      <span class="ai-gen-status" id="aiGenStatus"></span>
+    </div>
 
     <label>商品分类</label>
     <select id="editCategory">
@@ -206,7 +262,32 @@ const PASSWORD_KEY = 'rcyx_admin_pwd';
 const TOKEN_KEY = 'rcyx_github_token';
 
 let products = [];
-let currentImageData = '';
+let currentImages = []; // array of base64 data URLs
+let aiApiKey = '';
+let aiModel = 'qwen-vl-max';
+
+// === AI Setup ===
+function toggleAiSetup() {
+  const el = document.getElementById('aiSetup');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  if (el.style.display === 'block') {
+    const saved = localStorage.getItem('rcyx_ai_key');
+    if (saved) document.getElementById('aiApiKey').value = saved;
+    const savedModel = localStorage.getItem('rcyx_ai_model');
+    if (savedModel) document.getElementById('aiModel').value = savedModel;
+  }
+}
+
+function saveAiKey() {
+  const key = document.getElementById('aiApiKey').value.trim();
+  if (!key) return;
+  localStorage.setItem('rcyx_ai_key', key);
+  aiApiKey = key;
+  aiModel = document.getElementById('aiModel').value;
+  localStorage.setItem('rcyx_ai_model', aiModel);
+  showStatus('✅ AI 配置已保存');
+  document.getElementById('aiSetup').style.display = 'none';
+}
 
 // === Auth ===
 function doLogin() {
@@ -254,6 +335,9 @@ function enterAdmin() {
     document.getElementById('tokenSetup').style.display = 'none';
     loadProducts();
   }
+  // Load AI config
+  aiApiKey = localStorage.getItem('rcyx_ai_key') || '';
+  aiModel = localStorage.getItem('rcyx_ai_model') || 'qwen-vl-max';
 }
 
 function saveToken() {
@@ -343,9 +427,12 @@ function renderProductList() {
     list.innerHTML = '<div class="empty"><div class="icon">📦</div><p>暂无商品，点击右上角添加</p></div>';
     return;
   }
-  list.innerHTML = products.map((p, i) => `
+  list.innerHTML = products.map((p, i) => {
+    const mainImg = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '');
+    const imgSrc = mainImg || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 80%22><rect fill=%22%23f0f0f0%22 width=%2280%22 height=%2280%22/><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2220%22>📦</text></svg>';
+    return `
     <div class="product-item">
-      <img src="${p.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 80%22><rect fill=%22%23f0f0f0%22 width=%2280%22 height=%2280%22/><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2220%22>📦</text></svg>'}" alt="">
+      <img src="${imgSrc}" alt="">
       <div class="info">
         <h4>${esc(p.name)}</h4>
         <div class="cat">${esc(p.category || '未分类')}</div>
@@ -359,8 +446,8 @@ function renderProductList() {
         <button onclick="openEditModal(${i})">✏️ 编辑</button>
         <button class="del" onclick="deleteProduct(${i})">🗑 删除</button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 // === CRUD ===
@@ -375,9 +462,8 @@ function openAddModal() {
   document.getElementById('editDealPrice').value = '';
   document.getElementById('editWechat').value = '';
   document.getElementById('editPhone').value = '';
-  document.getElementById('imgPreview').style.display = 'none';
-  document.getElementById('imgPlaceholder').style.display = 'block';
-  currentImageData = '';
+  currentImages = [];
+  renderImagePreviews();
   document.getElementById('editModal').classList.add('show');
 }
 
@@ -394,16 +480,15 @@ function openEditModal(index) {
   document.getElementById('editWechat').value = (p.contact && p.contact.wechat) || '';
   document.getElementById('editPhone').value = (p.contact && p.contact.phone) || '';
   
-  if (p.image) {
-    document.getElementById('imgPreview').src = p.image;
-    document.getElementById('imgPreview').style.display = 'block';
-    document.getElementById('imgPlaceholder').style.display = 'none';
-    currentImageData = p.image;
+  // Load images - support both new array format and old single image format
+  if (p.images && p.images.length > 0) {
+    currentImages = [...p.images];
+  } else if (p.image) {
+    currentImages = [p.image];
   } else {
-    document.getElementById('imgPreview').style.display = 'none';
-    document.getElementById('imgPlaceholder').style.display = 'block';
-    currentImageData = '';
+    currentImages = [];
   }
+  renderImagePreviews();
   
   document.getElementById('editModal').classList.add('show');
 }
@@ -420,7 +505,8 @@ async function saveProduct() {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     name,
     description: document.getElementById('editDesc').value.trim(),
-    image: currentImageData,
+    images: currentImages,
+    image: currentImages.length > 0 ? currentImages[0] : '',
     category: document.getElementById('editCategory').value,
     marketPrice: parseFloat(document.getElementById('editMarketPrice').value) || null,
     costPrice: parseFloat(document.getElementById('editCostPrice').value) || null,
@@ -453,21 +539,136 @@ async function deleteProduct(index) {
   renderProductList();
 }
 
-function handleImage(input) {
-  const file = input.files[0];
-  if (!file) return;
-  if (file.size > 2 * 1024 * 1024) {
-    alert('图片不能超过2MB');
+function handleImages(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  
+  let pending = files.length;
+  files.forEach(file => {
+    if (file.size > 2 * 1024 * 1024) {
+      alert(`图片 "${file.name}" 超过2MB，已跳过`);
+      pending--;
+      if (pending === 0) input.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      // Compress image
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const MAX = 1200;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        currentImages.push(canvas.toDataURL('image/jpeg', 0.85));
+        renderImagePreviews();
+        pending--;
+        if (pending === 0) input.value = '';
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function removeImage(index) {
+  currentImages.splice(index, 1);
+  renderImagePreviews();
+}
+
+function renderImagePreviews() {
+  const list = document.getElementById('imgList');
+  list.innerHTML = currentImages.map((src, i) => `
+    <div class="img-thumb">
+      <img src="${src}" alt="">
+      <button class="remove-img" onclick="removeImage(${i})">×</button>
+    </div>
+  `).join('');
+}
+
+async function aiGenerateDesc() {
+  if (!aiApiKey) {
+    aiApiKey = localStorage.getItem('rcyx_ai_key') || '';
+  }
+  if (!aiApiKey) {
+    alert('请先点击右上角"🤖 AI设置"配置 DashScope API Key');
     return;
   }
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    currentImageData = e.target.result;
-    document.getElementById('imgPreview').src = currentImageData;
-    document.getElementById('imgPreview').style.display = 'block';
-    document.getElementById('imgPlaceholder').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
+  if (currentImages.length === 0) {
+    alert('请先上传至少一张商品图片');
+    return;
+  }
+
+  const btn = document.getElementById('aiGenBtn');
+  const status = document.getElementById('aiGenStatus');
+  btn.disabled = true;
+  status.textContent = '正在生成中...';
+
+  const productName = document.getElementById('editName').value.trim();
+  const category = document.getElementById('editCategory').value;
+
+  // Build messages for Qwen-VL
+  const content = [];
+  // Add images
+  currentImages.forEach(imgData => {
+    content.push({
+      type: 'image_url',
+      image_url: { url: imgData }
+    });
+  });
+  
+  const prompt = `你是一个电商文案专家。请根据商品图片${productName ? '（商品名称：' + productName + '）' : ''}${category ? '（分类：' + category + '）' : ''}，写一段简洁有吸引力的商品介绍，要求：
+1. 突出商品卖点和特色
+2. 语言简洁有力，2-3句话
+3. 适合电商产品展示页面使用
+4. 不要加标题或格式符号，直接输出描述文字
+5. 如果图片中有文字信息，可以融入描述中`;
+
+  content.push({ type: 'text', text: prompt });
+
+  try {
+    const model = document.getElementById('aiModel').value || aiModel;
+    const resp = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${aiApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{
+          role: 'user',
+          content: content
+        }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error?.message || resp.status);
+    }
+
+    const data = await resp.json();
+    const desc = data.choices?.[0]?.message?.content || '';
+    if (desc) {
+      document.getElementById('editDesc').value = desc;
+      status.textContent = '✅ 已生成';
+    } else {
+      status.textContent = '生成结果为空';
+    }
+  } catch (e) {
+    status.textContent = '❌ ' + e.message;
+    console.error('AI generation error:', e);
+  } finally {
+    btn.disabled = false;
+    setTimeout(() => { status.textContent = ''; }, 5000);
+  }
 }
 
 function showPreview() {
