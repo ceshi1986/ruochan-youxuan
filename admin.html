@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>若禅优选 - 管理后台</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:#c8a96e;--primary-dark:#a88b4a;--bg:#f8f6f3;--card:#fff;--text:#333;--text-light:#888;--red:#e74c3c;--green:#27ae60;--border:#e8e8e8}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* Login Screen */
+.login-screen{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+.login-box{background:var(--card);border-radius:16px;padding:40px;max-width:400px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,0.08);text-align:center}
+.login-box h2{font-size:22px;margin-bottom:8px}
+.login-box p{color:var(--text-light);font-size:14px;margin-bottom:24px}
+.login-box input{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;margin-bottom:12px;outline:none;transition:border 0.3s}
+.login-box input:focus{border-color:var(--primary)}
+.login-box .btn{width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity 0.3s}
+.login-box .btn:hover{opacity:0.9}
+.login-box .hint{margin-top:12px;font-size:12px;color:var(--text-light)}
+.login-box .error{color:var(--red);font-size:13px;margin-bottom:10px;display:none}
+
+/* Admin Panel */
+.admin-panel{display:none}
+.admin-header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100}
+.admin-header h1{font-size:18px}
+.admin-header h1 span{color:var(--primary)}
+.admin-header .actions{display:flex;gap:8px}
+.admin-header .actions button{padding:8px 16px;border:1.5px solid rgba(255,255,255,0.3);border-radius:8px;background:transparent;color:#fff;font-size:13px;cursor:pointer;transition:all 0.3s}
+.admin-header .actions button:hover{background:rgba(255,255,255,0.1)}
+.admin-header .actions button.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+
+.admin-body{max-width:900px;margin:0 auto;padding:20px}
+
+/* GitHub Token Setup */
+.token-setup{background:#fff8e1;border:1px solid #ffe082;border-radius:12px;padding:20px;margin-bottom:20px}
+.token-setup h3{font-size:15px;margin-bottom:8px;color:#f57f17}
+.token-setup p{font-size:13px;color:#666;margin-bottom:12px;line-height:1.6}
+.token-setup input{width:100%;padding:10px 14px;border:1.5px solid #ffe082;border-radius:8px;font-size:14px;outline:none;margin-bottom:10px}
+.token-setup button{padding:8px 20px;border:none;border-radius:8px;background:#f57f17;color:#fff;font-size:13px;cursor:pointer}
+
+/* Product List */
+.product-list{display:flex;flex-direction:column;gap:12px}
+.product-item{background:var(--card);border-radius:12px;padding:16px;display:flex;gap:16px;align-items:center;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.product-item img{width:80px;height:80px;border-radius:8px;object-fit:cover;background:#f0f0f0;flex-shrink:0}
+.product-item .info{flex:1;min-width:0}
+.product-item .info h4{font-size:15px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.product-item .info .cat{font-size:12px;color:var(--text-light);margin-bottom:4px}
+.product-item .info .prices{font-size:13px;display:flex;gap:12px;flex-wrap:wrap}
+.product-item .info .prices .deal{color:var(--red);font-weight:600}
+.product-item .info .prices .market{color:#aaa;text-decoration:line-through}
+.product-item .btns{display:flex;gap:6px;flex-shrink:0}
+.product-item .btns button{padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:#fff;font-size:12px;cursor:pointer;transition:all 0.2s}
+.product-item .btns button:hover{border-color:var(--primary)}
+.product-item .btns button.del:hover{border-color:var(--red);color:var(--red)}
+
+/* Edit Modal */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px;padding:28px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;animation:modalIn 0.3s}
+@keyframes modalIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+.modal h3{font-size:18px;margin-bottom:20px;text-align:center}
+.modal label{display:block;font-size:13px;color:var(--text-light);margin-bottom:4px;margin-top:14px}
+.modal label:first-of-type{margin-top:0}
+.modal input,.modal textarea,.modal select{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;outline:none;transition:border 0.3s;font-family:inherit}
+.modal input:focus,.modal textarea:focus,.modal select:focus{border-color:var(--primary)}
+.modal textarea{resize:vertical;min-height:80px}
+.modal .price-group{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.modal .price-group input{text-align:center}
+.modal .img-upload{border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:border-color 0.3s;position:relative;overflow:hidden}
+.modal .img-upload:hover{border-color:var(--primary)}
+.modal .img-upload img{max-width:100%;max-height:200px;border-radius:8px;margin-top:8px}
+.modal .img-upload input{display:none}
+.modal .img-upload .placeholder{color:var(--text-light);font-size:13px}
+.modal .btn-row{display:flex;gap:10px;margin-top:24px}
+.modal .btn-row button{flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.3s}
+.modal .btn-row .save{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff}
+.modal .btn-row .cancel{background:#f5f5f5;color:var(--text)}
+
+/* Status */
+.status-bar{padding:12px 20px;background:#e8f8f0;color:var(--green);font-size:13px;text-align:center;border-radius:8px;margin-bottom:16px;display:none}
+.status-bar.error{background:#fde8e8;color:var(--red)}
+.status-bar.show{display:block}
+
+/* Empty State */
+.empty{text-align:center;padding:60px 20px;color:var(--text-light)}
+.empty .icon{font-size:48px;margin-bottom:12px}
+
+/* Responsive */
+@media(max-width:640px){
+  .modal .price-group{grid-template-columns:1fr}
+  .product-item{flex-direction:column;align-items:flex-start}
+  .product-item img{width:100%;height:180px}
+  .product-item .btns{width:100%;justify-content:flex-end}
+}
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h2>🔐 管理后台</h2>
+    <p>若禅优选 · 商品管理</p>
+    <div class="error" id="loginError"></div>
+    <input type="password" id="passwordInput" placeholder="请输入管理员密码" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn" onclick="doLogin()">登 录</button>
+    <div class="hint" id="loginHint">首次使用请设置管理员密码</div>
+  </div>
+</div>
+
+<!-- Admin Panel -->
+<div class="admin-panel" id="adminPanel">
+  <div class="admin-header">
+    <h1>若禅<span>优选</span> · 管理</h1>
+    <div class="actions">
+      <button onclick="showPreview()">👁 预览</button>
+      <button class="primary" onclick="openAddModal()">+ 添加商品</button>
+      <button onclick="doLogout()">退出</button>
+    </div>
+  </div>
+
+  <div class="admin-body">
+    <div class="status-bar" id="statusBar"></div>
+
+    <div class="token-setup" id="tokenSetup" style="display:none">
+      <h3>⚙️ 配置 GitHub Token</h3>
+      <p>需要 GitHub Personal Access Token (repo权限) 才能保存数据到仓库。<br>
+      获取方式：GitHub → Settings → Developer settings → Personal access tokens → Generate new token<br>
+      勾选 repo 权限，生成后粘贴到下方：</p>
+      <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxx">
+      <button onclick="saveToken()">保存 Token</button>
+    </div>
+
+    <div class="product-list" id="productList">
+      <div class="empty"><div class="icon">📦</div><p>暂无商品，点击右上角添加</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3 id="modalTitle">添加商品</h3>
+    <input type="hidden" id="editId">
+    
+    <label>商品名称 *</label>
+    <input type="text" id="editName" placeholder="输入商品名称">
+
+    <label>商品图片</label>
+    <div class="img-upload" id="imgUpload" onclick="document.getElementById('imgInput').click()">
+      <div class="placeholder" id="imgPlaceholder">📷 点击上传图片</div>
+      <img id="imgPreview" style="display:none">
+      <input type="file" id="imgInput" accept="image/*" onchange="handleImage(this)">
+    </div>
+
+    <label>商品介绍</label>
+    <textarea id="editDesc" placeholder="输入商品介绍，或使用下方AI生成"></textarea>
+
+    <label>商品分类</label>
+    <select id="editCategory">
+      <option value="">请选择分类</option>
+      <option value="智能门锁">智能门锁</option>
+      <option value="毛绒玩具">毛绒玩具</option>
+      <option value="AI产品">AI产品</option>
+      <option value="家居日用">家居日用</option>
+      <option value="数码电子">数码电子</option>
+      <option value="其他">其他</option>
+    </select>
+
+    <label>价格设置（元）</label>
+    <div class="price-group">
+      <div>
+        <input type="number" id="editMarketPrice" placeholder="市场价">
+        <small style="color:#aaa;font-size:11px;text-align:center;display:block">市场价(划线)</small>
+      </div>
+      <div>
+        <input type="number" id="editCostPrice" placeholder="成本价">
+        <small style="color:var(--green);font-size:11px;text-align:center;display:block">成本价</small>
+      </div>
+      <div>
+        <input type="number" id="editDealPrice" placeholder="捡漏价">
+        <small style="color:var(--red);font-size:11px;text-align:center;display:block">捡漏价</small>
+      </div>
+    </div>
+
+    <label>联系方式（微信号）</label>
+    <input type="text" id="editWechat" placeholder="微信号">
+
+    <label>联系方式（手机号）</label>
+    <input type="text" id="editPhone" placeholder="手机号">
+
+    <div class="btn-row">
+      <button class="cancel" onclick="closeModal()">取消</button>
+      <button class="save" onclick="saveProduct()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const GITHUB_REPO = 'ceshi1986/ruochan-youxuan';
+const GITHUB_BRANCH = 'main';
+const PRODUCTS_PATH = 'data/products.json';
+const PASSWORD_KEY = 'rcyx_admin_pwd';
+const TOKEN_KEY = 'rcyx_github_token';
+
+let products = [];
+let currentImageData = '';
+
+// === Auth ===
+function doLogin() {
+  const pwd = document.getElementById('passwordInput').value.trim();
+  if (!pwd) return;
+  
+  const savedPwd = localStorage.getItem(PASSWORD_KEY);
+  if (!savedPwd) {
+    // First time: set password
+    if (pwd.length < 4) {
+      showLoginError('密码至少4位');
+      return;
+    }
+    localStorage.setItem(PASSWORD_KEY, pwd);
+    enterAdmin();
+  } else if (pwd === savedPwd) {
+    enterAdmin();
+  } else {
+    showLoginError('密码错误');
+  }
+}
+
+function doLogout() {
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('passwordInput').value = '';
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('loginError');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function enterAdmin() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('adminPanel').style.display = 'block';
+  
+  // Check GitHub token
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    document.getElementById('tokenSetup').style.display = 'block';
+  } else {
+    document.getElementById('tokenSetup').style.display = 'none';
+    loadProducts();
+  }
+}
+
+function saveToken() {
+  const token = document.getElementById('githubToken').value.trim();
+  if (!token) return;
+  localStorage.setItem(TOKEN_KEY, token);
+  document.getElementById('tokenSetup').style.display = 'none';
+  loadProducts();
+  showStatus('Token 保存成功');
+}
+
+// === Data ===
+async function loadProducts() {
+  const token = localStorage.getItem(TOKEN_KEY);
+  try {
+    const resp = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${PRODUCTS_PATH}`, {
+      headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' }
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      const content = atob(data.content);
+      products = JSON.parse(content).products || [];
+    } else if (resp.status === 404) {
+      products = [];
+    } else {
+      showStatus('加载失败: ' + resp.status, true);
+      return;
+    }
+  } catch (e) {
+    showStatus('网络错误', true);
+    return;
+  }
+  renderProductList();
+}
+
+async function saveToGitHub() {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    document.getElementById('tokenSetup').style.display = 'block';
+    showStatus('请先配置 GitHub Token', true);
+    return false;
+  }
+
+  try {
+    // Get current SHA
+    let sha = null;
+    const getResp = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${PRODUCTS_PATH}`, {
+      headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' }
+    });
+    if (getResp.ok) {
+      const getData = await getResp.json();
+      sha = getData.sha;
+    }
+
+    // Save
+    const body = {
+      message: 'Update products',
+      content: btoa(unescape(encodeURIComponent(JSON.stringify({ products }, null, 2)))),
+      branch: GITHUB_BRANCH
+    };
+    if (sha) body.sha = sha;
+
+    const resp = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${PRODUCTS_PATH}`, {
+      method: 'PUT',
+      headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (resp.ok) {
+      showStatus('✅ 保存成功');
+      return true;
+    } else {
+      const err = await resp.json();
+      showStatus('保存失败: ' + (err.message || resp.status), true);
+      return false;
+    }
+  } catch (e) {
+    showStatus('网络错误', true);
+    return false;
+  }
+}
+
+// === Render ===
+function renderProductList() {
+  const list = document.getElementById('productList');
+  if (products.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="icon">📦</div><p>暂无商品，点击右上角添加</p></div>';
+    return;
+  }
+  list.innerHTML = products.map((p, i) => `
+    <div class="product-item">
+      <img src="${p.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 80%22><rect fill=%22%23f0f0f0%22 width=%2280%22 height=%2280%22/><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2220%22>📦</text></svg>'}" alt="">
+      <div class="info">
+        <h4>${esc(p.name)}</h4>
+        <div class="cat">${esc(p.category || '未分类')}</div>
+        <div class="prices">
+          <span class="deal">捡漏 ¥${p.dealPrice || '?'}</span>
+          <span class="market">市场 ¥${p.marketPrice || '?'}</span>
+          ${p.costPrice ? `<span style="color:var(--green)">成本 ¥${p.costPrice}</span>` : ''}
+        </div>
+      </div>
+      <div class="btns">
+        <button onclick="openEditModal(${i})">✏️ 编辑</button>
+        <button class="del" onclick="deleteProduct(${i})">🗑 删除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// === CRUD ===
+function openAddModal() {
+  document.getElementById('modalTitle').textContent = '添加商品';
+  document.getElementById('editId').value = '';
+  document.getElementById('editName').value = '';
+  document.getElementById('editDesc').value = '';
+  document.getElementById('editCategory').value = '';
+  document.getElementById('editMarketPrice').value = '';
+  document.getElementById('editCostPrice').value = '';
+  document.getElementById('editDealPrice').value = '';
+  document.getElementById('editWechat').value = '';
+  document.getElementById('editPhone').value = '';
+  document.getElementById('imgPreview').style.display = 'none';
+  document.getElementById('imgPlaceholder').style.display = 'block';
+  currentImageData = '';
+  document.getElementById('editModal').classList.add('show');
+}
+
+function openEditModal(index) {
+  const p = products[index];
+  document.getElementById('modalTitle').textContent = '编辑商品';
+  document.getElementById('editId').value = index;
+  document.getElementById('editName').value = p.name || '';
+  document.getElementById('editDesc').value = p.description || '';
+  document.getElementById('editCategory').value = p.category || '';
+  document.getElementById('editMarketPrice').value = p.marketPrice || '';
+  document.getElementById('editCostPrice').value = p.costPrice || '';
+  document.getElementById('editDealPrice').value = p.dealPrice || '';
+  document.getElementById('editWechat').value = (p.contact && p.contact.wechat) || '';
+  document.getElementById('editPhone').value = (p.contact && p.contact.phone) || '';
+  
+  if (p.image) {
+    document.getElementById('imgPreview').src = p.image;
+    document.getElementById('imgPreview').style.display = 'block';
+    document.getElementById('imgPlaceholder').style.display = 'none';
+    currentImageData = p.image;
+  } else {
+    document.getElementById('imgPreview').style.display = 'none';
+    document.getElementById('imgPlaceholder').style.display = 'block';
+    currentImageData = '';
+  }
+  
+  document.getElementById('editModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('editModal').classList.remove('show');
+}
+
+async function saveProduct() {
+  const name = document.getElementById('editName').value.trim();
+  if (!name) { alert('请输入商品名称'); return; }
+
+  const product = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    name,
+    description: document.getElementById('editDesc').value.trim(),
+    image: currentImageData,
+    category: document.getElementById('editCategory').value,
+    marketPrice: parseFloat(document.getElementById('editMarketPrice').value) || null,
+    costPrice: parseFloat(document.getElementById('editCostPrice').value) || null,
+    dealPrice: parseFloat(document.getElementById('editDealPrice').value) || null,
+    contact: {
+      wechat: document.getElementById('editWechat').value.trim(),
+      phone: document.getElementById('editPhone').value.trim()
+    },
+    createdAt: new Date().toISOString().slice(0, 10)
+  };
+
+  const editIndex = document.getElementById('editId').value;
+  if (editIndex !== '') {
+    products[parseInt(editIndex)] = { ...products[parseInt(editIndex)], ...product };
+  } else {
+    products.push(product);
+  }
+
+  const ok = await saveToGitHub();
+  if (ok) {
+    closeModal();
+    renderProductList();
+  }
+}
+
+async function deleteProduct(index) {
+  if (!confirm(`确定删除「${products[index].name}」？`)) return;
+  products.splice(index, 1);
+  await saveToGitHub();
+  renderProductList();
+}
+
+function handleImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    alert('图片不能超过2MB');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    currentImageData = e.target.result;
+    document.getElementById('imgPreview').src = currentImageData;
+    document.getElementById('imgPreview').style.display = 'block';
+    document.getElementById('imgPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function showPreview() {
+  window.open('index.html', '_blank');
+}
+
+function showStatus(msg, isError) {
+  const bar = document.getElementById('statusBar');
+  bar.textContent = msg;
+  bar.className = 'status-bar show' + (isError ? ' error' : '');
+  setTimeout(() => bar.className = 'status-bar', 3000);
+}
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// Init
+document.getElementById('editModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Check if already logged in
+if (localStorage.getItem(PASSWORD_KEY)) {
+  document.getElementById('loginHint').textContent = '请输入密码登录';
+}
+</script>
+</body>
+</html>
