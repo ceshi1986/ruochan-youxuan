@@ -66,6 +66,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
 .want-btn:hover{opacity:0.9;transform:scale(1.02)}
 .want-btn:active{transform:scale(0.98)}
 
+/* Share Button */
+.share-btn{width:100%;padding:10px;border:1.5px solid var(--primary);border-radius:10px;background:#fff;color:var(--primary);font-size:14px;font-weight:500;cursor:pointer;transition:all 0.3s;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px}
+.share-btn:hover{background:var(--primary);color:#fff}
+.share-btn:active{transform:scale(0.98)}
+.header-share{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1.5px solid rgba(255,255,255,0.3);border-radius:20px;background:rgba(255,255,255,0.1);color:#fff;font-size:13px;cursor:pointer;transition:all 0.3s;margin-top:8px}
+.header-share:hover{background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.5)}
+
+/* Share Toast */
+.share-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(0,0,0,0.8);color:#fff;padding:12px 24px;border-radius:24px;font-size:14px;z-index:3000;opacity:0;transition:all 0.3s;pointer-events:none;white-space:nowrap}
+.share-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Product highlight animation */
+.product-card.highlighted{animation:highlightPulse 2s ease-out}
+@keyframes highlightPulse{0%{box-shadow:0 0 0 4px var(--primary)}50%{box-shadow:0 0 20px 4px var(--primary)}100%{box-shadow:var(--shadow)}}
+
 /* Empty State */
 .empty-state{text-align:center;padding:80px 20px;color:var(--text-light)}
 .empty-state .icon{font-size:64px;margin-bottom:16px}
@@ -121,6 +136,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
 <div class="header">
   <h1>若禅<span>优选</span></h1>
   <p>精选好物 · 源头直供 · 品质保障</p>
+  <button class="header-share" onclick="shareWebsite()">📤 分享网站</button>
 </div>
 
 <div class="filter-bar" id="filterBar">
@@ -138,6 +154,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
     <button class="close-btn" onclick="closeModal()">关闭</button>
   </div>
 </div>
+
+<div class="share-toast" id="shareToast"></div>
 
 <div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
   <button class="lb-close" onclick="closeLightbox()">×</button>
@@ -228,6 +246,7 @@ function renderProducts() {
           ${p.costPrice ? `<div class="price-row"><span class="price-label">成本价</span><span class="price-cost">¥${p.costPrice}</span></div>` : ''}
         </div>
         <button class="want-btn" data-idx="${allIdx}" onclick="showContactByIndex(this.dataset.idx)">🛒 我想要</button>
+        <button class="share-btn" onclick="shareProduct(${allIdx})">📤 分享好友</button>
       </div>
     </div>
   `;
@@ -335,7 +354,100 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'ArrowRight') lbNav(1);
 });
 
-loadProducts();
+// === Share Functions ===
+function showToast(msg) {
+  const toast = document.getElementById('shareToast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+function shareWebsite() {
+  const url = window.location.href.split('?')[0].split('#')[0];
+  const title = '若禅优选 - 精选好物，源头直供';
+  const text = '精选优质好物，厂家源头直供，价格超值！';
+  
+  if (navigator.share && navigator.canShare) {
+    navigator.share({ title, text, url }).catch(() => {
+      copyToClipboard(url, '网站链接已复制');
+    });
+  } else {
+    copyToClipboard(url, '网站链接已复制，快去分享吧');
+  }
+}
+
+function shareProduct(idx) {
+  const p = allProducts[idx];
+  if (!p) return;
+  
+  const baseUrl = window.location.href.split('?')[0].split('#')[0];
+  const url = baseUrl + '?product=' + encodeURIComponent(p.name);
+  const title = p.name;
+  const text = `【若禅优选】${p.name}，捡漏价¥${p.dealPrice || '?'}，原价¥${p.marketPrice || '?'}，超值好物快来看看！`;
+  
+  if (navigator.share && navigator.canShare) {
+    navigator.share({ title, text, url }).catch(() => {
+      copyToClipboard(url, '商品链接已复制');
+    });
+  } else {
+    copyToClipboard(url, '商品链接已复制，快去分享吧');
+  }
+}
+
+function copyToClipboard(text, msg) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(msg);
+    }).catch(() => {
+      fallbackCopy(text, msg);
+    });
+  } else {
+    fallbackCopy(text, msg);
+  }
+}
+
+function fallbackCopy(text, msg) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    showToast(msg);
+  } catch (e) {
+    showToast('复制失败，请手动复制链接');
+  }
+  document.body.removeChild(ta);
+}
+
+// === Auto-scroll to shared product ===
+function scrollToProduct() {
+  const params = new URLSearchParams(window.location.search);
+  const productName = params.get('product');
+  if (!productName) return;
+  
+  const idx = allProducts.findIndex(p => p.name === productName);
+  if (idx === -1) return;
+  
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.product-card');
+    // Find the card that corresponds to this product
+    // Since cards are rendered in order, we need to find the right one
+    const filtered = currentCategory === 'all' 
+      ? allProducts.map((p,i) => ({p, allIdx: i}))
+      : allProducts.map((p,i) => ({p, allIdx: i})).filter(x => x.p.category === currentCategory);
+    
+    const cardIdx = filtered.findIndex(x => x.allIdx === idx);
+    if (cardIdx >= 0 && cards[cardIdx]) {
+      cards[cardIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      cards[cardIdx].classList.add('highlighted');
+      setTimeout(() => cards[cardIdx].classList.remove('highlighted'), 2500);
+    }
+  }, 500);
+}
+
+loadProducts().then(() => scrollToProduct());
 </script>
 </body>
 </html>
