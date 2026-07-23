@@ -536,16 +536,75 @@ function closeModal() {
   document.getElementById('editModal').classList.remove('show');
 }
 
+async function uploadImageToGitHub(base64Data, filename) {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) return null;
+  
+  // Extract base64 content (remove data:image/xxx;base64, prefix)
+  const base64Content = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+  
+  const payload = {
+    message: 'Add image ' + filename,
+    content: base64Content,
+    branch: GITHUB_BRANCH
+  };
+  
+  try {
+    const resp = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/images/${filename}`, {
+      method: 'PUT',
+      headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    if (resp.ok) {
+      // Return jsDelivr CDN URL
+      return `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@${GITHUB_BRANCH}/images/${filename}`;
+    } else {
+      const err = await resp.json();
+      console.error('Upload image failed:', err);
+      return null;
+    }
+  } catch (e) {
+    console.error('Upload image error:', e);
+    return null;
+  }
+}
+
 async function saveProduct() {
   const name = document.getElementById('editName').value.trim();
   if (!name) { alert('请输入商品名称'); return; }
 
+  const productId = document.getElementById('editId').value !== '' 
+    ? products[parseInt(document.getElementById('editId').value)].id 
+    : Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+  // Upload base64 images to GitHub and get CDN URLs
+  const uploadedImages = [];
+  for (let i = 0; i < currentImages.length; i++) {
+    const img = currentImages[i];
+    if (img.startsWith('data:image')) {
+      // New base64 image - upload to GitHub
+      const ext = 'jpg';
+      const filename = `${productId}_${i}.${ext}`;
+      const url = await uploadImageToGitHub(img, filename);
+      if (url) {
+        uploadedImages.push(url);
+      } else {
+        alert(`图片 ${i+1} 上传失败，请重试`);
+        return;
+      }
+    } else {
+      // Already a URL (editing existing product)
+      uploadedImages.push(img);
+    }
+  }
+
   const product = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    id: productId,
     name,
     description: document.getElementById('editDesc').value.trim(),
-    images: currentImages,
-    image: currentImages.length > 0 ? currentImages[0] : '',
+    images: uploadedImages,
+    image: uploadedImages.length > 0 ? uploadedImages[0] : '',
     category: document.getElementById('editCategory').value,
     marketPrice: parseFloat(document.getElementById('editMarketPrice').value) || null,
     costPrice: parseFloat(document.getElementById('editCostPrice').value) || null,
