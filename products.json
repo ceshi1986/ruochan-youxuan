@@ -1,0 +1,41 @@
+{
+  "products": [
+    {
+      "id": "mry2prjyzlbx",
+      "name": "蓝牙智能门锁 指纹锁",
+      "description": "智能指纹门锁，支持密码、指纹、蓝牙多种开锁方式，简约时尚设计，安全便捷，适用于家庭与办公场景。",
+      "images": [
+        "https://cdn.jsdelivr.net/gh/ceshi1986/ruochan-youxuan@main/images/mry2prjyzlbx_0.jpg",
+        "https://cdn.jsdelivr.net/gh/ceshi1986/ruochan-youxuan@main/images/mry2prjyzlbx_1.jpg"
+      ],
+      "image": "https://cdn.jsdelivr.net/gh/ceshi1986/ruochan-youxuan@main/images/mry2prjyzlbx_main.jpg",
+      "category": "智能门锁",
+      "marketPrice": 599,
+      "costPrice": 295,
+      "dealPrice": 199,
+      "contact": {
+        "wechat": "18516096999",
+        "phone": "18516096999"
+      },
+      "createdAt": "2026-07-23"
+    },
+    {
+      "id": "mry2sw9yhn9v",
+      "name": "毛绒熊 玩偶",
+      "description": "柔软毛绒材质，萌趣小熊身穿蓝白条纹针织衫，胸前绣有“禅”字徽章，简约可爱，温暖治愈，是送礼或收藏的理想选择。",
+      "images": [
+        "https://cdn.jsdelivr.net/gh/ceshi1986/ruochan-youxuan@main/images/mry2sw9yhn9v_0.jpg"
+      ],
+      "image": "https://cdn.jsdelivr.net/gh/ceshi1986/ruochan-youxuan@main/images/mry2sw9yhn9v_main.jpg",
+      "category": "毛绒玩具",
+      "marketPrice": 69,
+      "costPrice": 32,
+      "dealPrice": 23,
+      "contact": {
+        "wechat": "18516096999",
+        "phone": "18516096999"
+      },
+      "createdAt": "2026-07-23"
+    }
+  ]
+}
