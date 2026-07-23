@@ -163,21 +163,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
     </div>
 
     <div class="ai-setup" id="aiSetup">
-      <h3>🤖 AI 生成配置</h3>
-      <p>使用阿里云通义千问 (Qwen-VL) 模型自动生成商品描述。需要 DashScope API Key。<br>
-      获取方式：访问 <a href="https://dashscope.console.aliyun.com/apiKey" target="_blank" style="color:#1a73e8">DashScope 控制台</a> 创建 API Key</p>
+      <h3>🤖 AI Key 设置</h3>
+      <p>输入您的授权 Key 以使用 AI 商品描述生成功能。<br>
+      Key 格式：META-xxxxxxxx-xxxxxxxx</p>
       <div class="ai-row">
-        <input type="password" id="aiApiKey" placeholder="sk-xxxxxxxxxxxxxxxx">
-        <button onclick="saveAiKey()">保存</button>
+        <input type="password" id="aiApiKey" placeholder="输入您的授权 Key">
+        <button onclick="saveAiKey()">验证</button>
       </div>
-      <div class="ai-toggle" style="margin-top:10px">
-        <label>模型选择</label>
-        <select id="aiModel">
-          <option value="qwen-vl-max">qwen-vl-max（推荐，支持图片理解）</option>
-          <option value="qwen-vl-plus">qwen-vl-plus（较快）</option>
-          <option value="qwen-turbo">qwen-turbo（纯文本，不分析图片）</option>
-        </select>
-      </div>
+      <div id="keyStatus" style="font-size:12px;margin-top:8px;color:#888"></div>
     </div>
 
     <div class="product-list" id="productList">
@@ -260,33 +253,63 @@ const GITHUB_BRANCH = 'main';
 const PRODUCTS_PATH = 'data/products.json';
 const PASSWORD_KEY = 'rcyx_admin_pwd';
 const TOKEN_KEY = 'rcyx_github_token';
+const FC_BACKEND = 'https://metaphyai-api-v-cwpuwzgtdx.cn-shanghai.fcapp.run';
 
 let products = [];
 let currentImages = []; // array of base64 data URLs
-let aiApiKey = '';
-let aiModel = 'qwen-vl-max';
+let userKey = '';
+let keyRemaining = 0;
 
 // === AI Setup ===
 function toggleAiSetup() {
   const el = document.getElementById('aiSetup');
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
   if (el.style.display === 'block') {
-    const saved = localStorage.getItem('rcyx_ai_key');
+    const saved = localStorage.getItem('rcyx_user_key');
     if (saved) document.getElementById('aiApiKey').value = saved;
-    const savedModel = localStorage.getItem('rcyx_ai_model');
-    if (savedModel) document.getElementById('aiModel').value = savedModel;
+    updateKeyStatus();
   }
 }
 
-function saveAiKey() {
+function updateKeyStatus() {
+  const statusEl = document.getElementById('keyStatus');
+  if (keyRemaining > 0) {
+    const tokens = keyRemaining >= 1000000 ? (keyRemaining/1000000).toFixed(1)+'M' : keyRemaining.toLocaleString();
+    statusEl.textContent = '✅ Key有效，剩余 ' + tokens + ' tokens';
+    statusEl.style.color = '#27ae60';
+  } else if (userKey) {
+    statusEl.textContent = '⏳ 验证中...';
+    statusEl.style.color = '#888';
+  } else {
+    statusEl.textContent = '';
+  }
+}
+
+async function saveAiKey() {
   const key = document.getElementById('aiApiKey').value.trim();
   if (!key) return;
-  localStorage.setItem('rcyx_ai_key', key);
-  aiApiKey = key;
-  aiModel = document.getElementById('aiModel').value;
-  localStorage.setItem('rcyx_ai_model', aiModel);
-  showStatus('✅ AI 配置已保存');
-  document.getElementById('aiSetup').style.display = 'none';
+  
+  // Validate key via FC backend
+  try {
+    const resp = await fetch(FC_BACKEND, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'key_validate', key: key })
+    });
+    const data = await resp.json();
+    if (data.success && data.valid) {
+      userKey = key;
+      keyRemaining = data.remaining || 0;
+      localStorage.setItem('rcyx_user_key', key);
+      updateKeyStatus();
+      showStatus('✅ Key 验证成功');
+      document.getElementById('aiSetup').style.display = 'none';
+    } else {
+      showStatus('❌ ' + (data.error || 'Key无效'), true);
+    }
+  } catch (e) {
+    showStatus('❌ 验证失败: ' + e.message, true);
+  }
 }
 
 // === Auth ===
@@ -335,9 +358,25 @@ function enterAdmin() {
     document.getElementById('tokenSetup').style.display = 'none';
     loadProducts();
   }
-  // Load AI config
-  aiApiKey = localStorage.getItem('rcyx_ai_key') || '';
-  aiModel = localStorage.getItem('rcyx_ai_model') || 'qwen-vl-max';
+  // Load user key
+  const savedKey = localStorage.getItem('rcyx_user_key') || '';
+  if (savedKey) {
+    userKey = savedKey;
+    // Validate in background
+    fetch(FC_BACKEND, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'key_validate', key: savedKey })
+    }).then(r => r.json()).then(data => {
+      if (data.success && data.valid) {
+        keyRemaining = data.remaining || 0;
+      } else {
+        userKey = '';
+        keyRemaining = 0;
+      }
+      updateKeyStatus();
+    }).catch(() => {});
+  }
 }
 
 function saveToken() {
@@ -593,11 +632,8 @@ function renderImagePreviews() {
 }
 
 async function aiGenerateDesc() {
-  if (!aiApiKey) {
-    aiApiKey = localStorage.getItem('rcyx_ai_key') || '';
-  }
-  if (!aiApiKey) {
-    alert('请先点击右上角"🤖 AI设置"配置 DashScope API Key');
+  if (!userKey) {
+    alert('请先点击右上角"🤖 AI设置"配置您的 Key');
     return;
   }
   if (currentImages.length === 0) {
@@ -613,54 +649,39 @@ async function aiGenerateDesc() {
   const productName = document.getElementById('editName').value.trim();
   const category = document.getElementById('editCategory').value;
 
-  // Build messages for Qwen-VL
-  const content = [];
-  // Add images
-  currentImages.forEach(imgData => {
-    content.push({
-      type: 'image_url',
-      image_url: { url: imgData }
-    });
-  });
-  
-  const prompt = `你是一个电商文案专家。请根据商品图片${productName ? '（商品名称：' + productName + '）' : ''}${category ? '（分类：' + category + '）' : ''}，写一段简洁有吸引力的商品介绍，要求：
-1. 突出商品卖点和特色
-2. 语言简洁有力，2-3句话
-3. 适合电商产品展示页面使用
-4. 不要加标题或格式符号，直接输出描述文字
-5. 如果图片中有文字信息，可以融入描述中`;
-
-  content.push({ type: 'text', text: prompt });
+  const systemPrompt = '你是一个电商文案专家。请根据商品图片' + 
+    (productName ? '（商品名称：' + productName + '）' : '') + 
+    (category ? '（分类：' + category + '）' : '') + 
+    '，写一段简洁有吸引力的商品介绍。要求：1. 突出商品卖点和特色 2. 语言简洁有力，2-3句话 3. 适合电商产品展示页面使用 4. 不要加标题或格式符号，直接输出描述文字 5. 如果图片中有文字信息，可以融入描述中';
 
   try {
-    const model = document.getElementById('aiModel').value || aiModel;
-    const resp = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+    const resp = await fetch(FC_BACKEND, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${aiApiKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: model,
-        messages: [{
-          role: 'user',
-          content: content
-        }]
+        action: 'analyze',
+        key: userKey,
+        system_prompt: systemPrompt,
+        user_prompt: '请分析上传的商品图片并生成描述。',
+        images: currentImages
       })
     });
 
-    if (!resp.ok) {
-      const err = await resp.json();
-      throw new Error(err.error?.message || resp.status);
-    }
-
     const data = await resp.json();
-    const desc = data.choices?.[0]?.message?.content || '';
-    if (desc) {
-      document.getElementById('editDesc').value = desc;
-      status.textContent = '✅ 已生成';
+    if (data.success) {
+      const desc = data.analysis || '';
+      if (desc) {
+        document.getElementById('editDesc').value = desc;
+        status.textContent = '✅ 已生成';
+        if (data.token_remaining !== undefined) {
+          keyRemaining = data.token_remaining;
+          updateKeyStatus();
+        }
+      } else {
+        status.textContent = '生成结果为空';
+      }
     } else {
-      status.textContent = '生成结果为空';
+      status.textContent = '❌ ' + (data.error || '生成失败');
     }
   } catch (e) {
     status.textContent = '❌ ' + e.message;
